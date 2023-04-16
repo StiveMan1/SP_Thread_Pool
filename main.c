@@ -1,26 +1,6 @@
 #include "thread_pool.h"
 #include <pthread.h>
-//#include "unit.h"
-#include <stdio.h>
-#include <stdlib.h>
-
-void unit_test_start(){
-
-}
-void unit_check(int result, char *str){
-    if(!result){
-        printf("%s\n", str);
-    }
-}
-void unit_fail_if(int result) {
-    if(result) {
-        exit(1);
-    }
-}
-#define unit_msg printf
-void unit_test_finish(){
-
-}
+#include "unit.h"
 
 
 

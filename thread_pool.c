@@ -1,6 +1,6 @@
 #include "thread_pool.h"
 #include <pthread.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 struct thread_task {
     thread_task_f function;
