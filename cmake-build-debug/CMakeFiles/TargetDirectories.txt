@@ -1,0 +1,3 @@
+/home/stive/University_Innopolis/S23/System_Programming/assigments/Assigmnent4/cmake-build-debug/CMakeFiles/Assigmnent4.dir
+/home/stive/University_Innopolis/S23/System_Programming/assigments/Assigmnent4/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/stive/University_Innopolis/S23/System_Programming/assigments/Assigmnent4/cmake-build-debug/CMakeFiles/rebuild_cache.dir
