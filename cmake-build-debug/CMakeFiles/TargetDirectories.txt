@@ -1,3 +1,0 @@
-C:/Users/04024/CLionProjects/SP_Thread_Pool/cmake-build-debug/CMakeFiles/SP_Thread_Pool.dir
-C:/Users/04024/CLionProjects/SP_Thread_Pool/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/04024/CLionProjects/SP_Thread_Pool/cmake-build-debug/CMakeFiles/rebuild_cache.dir
