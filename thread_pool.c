@@ -11,7 +11,7 @@ struct thread_task {
 
     bool finished;
     bool running;
-    bool joined;
+//    bool joined;
 
     pthread_mutex_t mutex;
     pthread_cond_t cond;
@@ -46,6 +46,10 @@ void *thread_pool_worker(void *arg) {
     struct thread_task *task = NULL;
     bool first_time = true;
 
+    thread_task_f function = NULL;
+    void *_arg = NULL;
+    void *result = NULL;
+
     while (true) {
         pthread_mutex_lock(&pool->mutex);
         while (pool->task_done == pool->task_counter && !pool->shutdown) {
@@ -68,11 +72,21 @@ void *thread_pool_worker(void *arg) {
         if(task == NULL) continue;
         bool delete = false;
 
+//        pthread_mutex_lock(&task->mutex);
+//        while(!task->joined) {
+//            pthread_cond_wait(&task->cond, &task->mutex);
+//        }
+//        pthread_mutex_unlock(&task->mutex);
+
         pthread_mutex_lock(&task->mutex);
-        while(!task->joined) {
-            pthread_cond_wait(&task->cond, &task->mutex);
-        }
-        task->result = task->function(task->arg);
+        function = task->function;
+        _arg = task->arg;
+        pthread_mutex_unlock(&task->mutex);
+
+        result = function(_arg);
+
+        pthread_mutex_lock(&task->mutex);
+        task->result = result;
         task->finished = true;
         pthread_cond_signal(&task->cond);
         pthread_mutex_unlock(&task->mutex);
@@ -88,7 +102,7 @@ int thread_pool_new(int max_thread_count, struct thread_pool **pool) {
     struct thread_pool *p = malloc(sizeof(struct thread_pool));
 
     p->threads = malloc(sizeof(pthread_t) * max_thread_count);
-    p->tasks = malloc(sizeof(struct thread_task *) * TPOOL_MAX_TASKS);
+    p->tasks = malloc(sizeof(struct thread_task *) * (TPOOL_MAX_TASKS + 1));
 
     p->max_threads = max_thread_count;
     p->cur_threads = 0;
@@ -177,7 +191,7 @@ int thread_task_new(struct thread_task **task, thread_task_f function, void *arg
 
     (*task)->running = false;
     (*task)->finished = false;
-    (*task)->joined = false;
+//    (*task)->joined = false;
     (*task)->pool = NULL;
 
     pthread_mutex_init(&(*task)->mutex, NULL);
@@ -197,10 +211,10 @@ int thread_task_join(struct thread_task *task, void **result) {
     if (!task->running) return TPOOL_ERR_TASK_NOT_PUSHED;
 
     pthread_mutex_lock(&task->mutex);
-    if(!task->joined) {
-        task->joined = true;
-        pthread_cond_signal(&task->cond);
-    }
+//    if(!task->joined) {
+//        task->joined = true;
+//        pthread_cond_signal(&task->cond);
+//    }
     while (!task->finished) {
         pthread_cond_wait(&task->cond, &task->mutex);
     }
@@ -217,24 +231,20 @@ int thread_task_timed_join(struct thread_task *task, double timeout, void **resu
     if (timeout <= 0) return TPOOL_ERR_TIMEOUT;
 
     struct timespec abs_timeout;
-    clock_gettime(CLOCK_MONOTONIC, &abs_timeout);
-    abs_timeout.tv_sec += (long)(timeout);
-    abs_timeout.tv_nsec += (long)(timeout * 1000000000) % 1000000000;
-    if (abs_timeout.tv_nsec > 10000000000) {
-        abs_timeout.tv_sec += 1;
-        abs_timeout.tv_nsec -= 10000000000;
-    }
+    clock_gettime(CLOCK_REALTIME, &abs_timeout);
+
+    abs_timeout.tv_sec += (long) (timeout);
+    abs_timeout.tv_nsec += (long) (timeout * 1000000000) % 1000000000;
 
 
-    int err = pthread_mutex_timedlock(&task->mutex, &abs_timeout);
-    if (err != 0) return TPOOL_ERR_TIMEOUT;
-    if(!task->joined) {
-        task->joined = true;
-        pthread_cond_signal(&task->cond);
-    }
+    pthread_mutex_lock(&task->mutex);
+//    if(!task->joined) {
+//        task->joined = true;
+//        pthread_cond_signal(&task->cond);
+//    }
     while (!task->finished) {
-        err = pthread_cond_timedwait(&task->cond, &task->mutex, &abs_timeout);
-        if (err != 0) {
+        int err = pthread_cond_timedwait(&task->cond, &task->mutex, &abs_timeout);
+        if (err == ETIMEDOUT) {
             pthread_mutex_unlock(&task->mutex);
             return TPOOL_ERR_TIMEOUT;
         }
@@ -269,10 +279,10 @@ int thread_task_detach(struct thread_task *task) {
     if (!task->running) return TPOOL_ERR_TASK_NOT_PUSHED;
 
     pthread_mutex_lock(&task->mutex);
-    if(!task->joined) {
-        task->joined = true;
-        pthread_cond_signal(&task->cond);
-    }
+//    if(!task->joined) {
+//        task->joined = true;
+//        pthread_cond_signal(&task->cond);
+//    }
     while (!task->finished) {
         pthread_cond_wait(&task->cond, &task->mutex);
     }
