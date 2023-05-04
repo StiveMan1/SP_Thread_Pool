@@ -45,7 +45,6 @@ struct thread_pool {
 void *thread_pool_worker(void *arg) {
     struct thread_pool *pool = (struct thread_pool *) arg;
     struct thread_task *task = NULL;
-    bool first_time = true;
 
     thread_task_f function = NULL;
     void *_arg = NULL;
@@ -63,10 +62,6 @@ void *thread_pool_worker(void *arg) {
         task = pool->tasks[pool->task_done];
         pool->tasks[pool->task_done] = NULL;
         pool->task_done = (pool->task_done + 1) % (TPOOL_MAX_TASKS + 1);
-        if (first_time) {
-            first_time = false;
-            pool->cur_threads++;
-        }
         pthread_mutex_unlock(&pool->mutex);
 
 
@@ -120,17 +115,6 @@ int thread_pool_new(int max_thread_count, struct thread_pool **pool) {
     pthread_cond_init(&p->cond, NULL);
 
     for (int i = 0; i < TPOOL_MAX_TASKS; i++) p->tasks[i] = NULL;
-    for (int i = 0; i < max_thread_count; i++) {
-        if (pthread_create(&p->threads[i], NULL, thread_pool_worker, p) != 0) {
-            for (int j = 0; j < i; j++) {
-                pthread_cancel(p->threads[j]);
-            }
-            free(p->tasks);
-            free(p->threads);
-            free(p);
-            return TPOOL_ERR_INVALID_ARGUMENT;
-        }
-    }
     *pool = p;
     return 0;
 }
@@ -151,7 +135,7 @@ int thread_pool_delete(struct thread_pool *pool) {
     pthread_cond_broadcast(&pool->cond);
     pthread_mutex_unlock(&pool->mutex);
 
-    for (int i = 0; i < pool->max_threads; i++) {
+    for (int i = 0; i < pool->cur_threads; i++) {
         pthread_join(pool->threads[i], NULL);
     }
 
@@ -172,6 +156,9 @@ int thread_pool_push_task(struct thread_pool *pool, struct thread_task *task) {
     }
 
     if(task->pool != NULL) pool->task_finished = (pool->task_finished + 1) % (TPOOL_MAX_TASKS + 1);
+    if ((pool->task_counter + 1 + TPOOL_MAX_TASKS - pool->task_finished) % (TPOOL_MAX_TASKS)> pool->cur_threads
+        && pool->cur_threads < pool->max_threads)
+        pthread_create(&pool->threads[pool->cur_threads++], NULL, thread_pool_worker, pool);
 
     task->pushed = true;
     task->joined = false;
