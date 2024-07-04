@@ -1,44 +1,57 @@
-# Thread pool.
-### Language: C.
+# Thread Pool Implementation in C
+## Overview
+This project aims to implement a thread pool in C, providing a mechanism to efficiently manage and execute multiple tasks across a fixed number of worker threads. Thread pools are beneficial in scenarios where the creation and destruction of threads are costly relative to the tasks they perform, enabling parallel execution without the overhead of frequent thread management.
 
-Need to implement a thread pool. In various programs executing
-many independent and easily parallelized tasks it is often quite
-handy to distribute them across multiple threads. But creating a
-thread for each necessity to execute something in parallel is
-very expensive in time and resources. If a task is not too long,
-doesn't read disk, doesn't touch network, then creation/deletion
-of a thread might take more time than the task itself.
+## Structure
+The thread pool is designed around a set of core functionalities encapsulated in `thread_pool.h` and `thread_pool.c`. The thread_pool structure manages a queue of tasks (`thread_task`) and a fixed number of worker threads that fetch and execute these tasks.
 
-Then tasks are either not paralleled at all, or when there are
-many of them, people make thread pools. It is usually a task queue
-and a few so called "worker threads" which take tasks from the
-queue. Thus there is always an already created thread which can
-quickly pick up a task. And instead of exiting the thread simply
-picks up a next task.
+## Key Components
+* `thread_pool struct`: Represents the thread pool and holds necessary information about worker threads and task queue.
+* `thread_task struct`: Describes an individual task that can be added to the pool's queue.
+* `Functions`: Includes functions for initializing and destroying the pool, adding tasks to the pool, checking task status, waiting for task completion (`thread_task_join`), and managing the worker threads.
+## Usage
+To integrate the thread pool into a project:
+* `Include Files`: Ensure `thread_pool.h` is included in your project.
+* `Initialization`: Create a thread pool using `thread_pool_init` specifying the number of worker threads.
+* `Task Execution`: Create tasks using `thread_task_create` and add them to the pool with `thread_pool_add_task`.
+* `Task Management`: Monitor task status and wait for completion using `thread_task_join`.
+* `Shutdown`: Cleanup resources with `thread_pool_destroy` once all tasks are completed.
+## Example
+```c++
+#include "thread_pool.h"
+#include <stdio.h>
 
-In big general purpose libraries often there is an out of the box
-solution: in Qt it is QThreadPool class, in .NET it is ThreadPool
-class, in boost it is thread_pool class. In the task you have to
-implement an own similar pool.
+void task_function(void *arg) {
+int *num = (int *)arg;
+printf("Task executing with argument: %d\n", *num);
+}
 
-In the files thread_pool.h and thread_pool.c you can fine
-templates of functions and structures which need to be
-implemented.
+int main() {
+// Initialize thread pool with 4 worker threads
+thread_pool *pool = thread_pool_init(4);
 
-The thread pool is described by a struct thread_pool implemented
-in thread_pool.c. A user can only have a pointer at it. Each
-task/job is described with struct thread_task, which a user can
-create and put into the pool's queue.
+    // Example tasks
+    int arg1 = 10;
+    int arg2 = 20;
 
-User can check task's status (waits for getting a worker; is
-already being executed), can wait for its end and get its result
-with thread_task_join, similar to how pthread_join works.
+    // Add tasks to the pool
+    thread_task *task1 = thread_task_create(task_function, &arg1);
+    thread_pool_add_task(pool, task1);
 
-Since the task is to implement a library, there is no 'main'
-function and no input from anywhere. You can write tests in C in a
-separate file with 'main' and which will 'include' your solution.
-For example, make a file main.c, add 'include "thread_pool.h"',
-and in the function 'main' you do tests. It can all be built like
-this:
+    thread_task *task2 = thread_task_create(task_function, &arg2);
+    thread_pool_add_task(pool, task2);
 
-        gcc thread_pool.c main.c
+    // Wait for tasks to complete
+    thread_task_join(task1);
+    thread_task_join(task2);
+
+    // Cleanup
+    thread_pool_destroy(pool);
+
+    return 0;
+}
+```
+## Conclusion
+This thread pool implementation provides a lightweight yet efficient mechanism for managing concurrent tasks in C programs, minimizing overhead associated with thread creation and destruction. By utilizing this pool, developers can achieve better performance in applications requiring parallel task execution.
+
+For further details on specific functions and their usage, refer to `thread_pool.h` and `thread_pool.c`.
